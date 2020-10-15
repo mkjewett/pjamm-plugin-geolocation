@@ -7,7 +7,7 @@ export class PJAMMGeolocationWeb extends WebPlugin implements PJAMMGeolocationPl
 
   constructor() {
     super({
-      name: 'GeolocationPJAMM',
+      name: 'PJAMMGeolocation',
       platforms: ['web'],
     });
   }
