@@ -12,7 +12,7 @@ public class PJAMMGeolocation: CAPPlugin, CLLocationManagerDelegate {
 
     @objc private var locationManager:CLLocationManager?
     @objc private var taskKey:NSInteger = 0
-    @objc private var locationCall:CAPPluginCall?
+    @objc private var locationCalls:[CAPPluginCall] = []
     
     @objc public override init!(bridge: CAPBridge!, pluginId: String!, pluginName: String!) {
         super.init(bridge: bridge, pluginId: pluginId, pluginName: pluginName);
@@ -48,8 +48,17 @@ public class PJAMMGeolocation: CAPPlugin, CLLocationManagerDelegate {
             ]
 
             self.notifyListeners("pjammLocation",data: position)
-            locationCall?.resolve(position)
+            
+            self.locationCalls.forEach( { call in
+                call.resolve(position)
+            })
+            
+            self.locationCalls.removeAll()
         }
+    }
+    
+    public func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
+        print("location error: " + error.localizedDescription)
     }
     
 /**
@@ -57,13 +66,18 @@ public class PJAMMGeolocation: CAPPlugin, CLLocationManagerDelegate {
  */
     
     @objc func getLocation(_ call: CAPPluginCall) {
-        self.locationCall = call
+        self.locationCalls.append(call)
         self.locationManager?.requestWhenInUseAuthorization()
         self.locationManager?.requestAlwaysAuthorization()
         self.locationManager?.requestLocation()
 
         DispatchQueue.main.asyncAfter(deadline: .now() + 10) {
-            self.locationCall?.reject()
+            
+            if(self.locationCalls.contains(call)){
+                call.reject("Error: Timeout has occured")
+                self.locationCalls.removeAll(where: { $0 == call })
+            }
+
         }
     }
 
