@@ -5,8 +5,9 @@ declare module '@capacitor/core' {
 }
 
 export interface PJAMMGeolocationPlugin {
-  startLocation(options:any):Promise<void>;
-  stopLocation():Promise<void>;
+  getLocation(options?:any):Promise<Position>;
+  startLocation(options?:any):void;
+  stopLocation():void;
   enableBackgroundTracking():void;
   disableBackgroundTracking():void;
 }

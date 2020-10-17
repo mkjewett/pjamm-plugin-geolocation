@@ -12,7 +12,31 @@ export class PJAMMGeolocationWeb extends WebPlugin implements PJAMMGeolocationPl
     });
   }
 
-  async startLocation(options:any):Promise<void> {
+  async getLocation(options?:any):Promise<Position>{
+    
+    let posOptions:any = {
+      enableHighAccuracy: true,
+      maximumAge: 0,
+      timeout: 10000
+    };
+
+    if(options && options.enableHighAccuracy != null) posOptions.enableHighAccuracy = options.enableHighAccuracy;
+    if(options && options.timeout != null)            posOptions.timeout            = options.timeout;
+    if(options && options.maximumAge != null)         posOptions.maximumAge         = options.maximumAge;
+    
+    return new Promise((resolve, reject) => {
+      return this.requestPermissions().then((_result) => {
+        window.navigator.geolocation.getCurrentPosition((pos) => {
+          resolve(pos);
+        }, (err) => {
+          reject(err);
+        }, posOptions);
+      });
+    });
+
+  }
+
+  startLocation(options?:any) {
 
     let posOptions:any = {
       enableHighAccuracy: true,
@@ -37,21 +61,19 @@ export class PJAMMGeolocationWeb extends WebPlugin implements PJAMMGeolocationPl
     this.watchID = id;
   }
 
-  async stopLocation():Promise<void> {
+  stopLocation() {
     if(this.watchID != null){
       window.navigator.geolocation.clearWatch(this.watchID);
       this.watchID = null;
     }
-
-    return Promise.resolve();
   }
 
-  async enableBackgroundTracking() {
+  enableBackgroundTracking() {
     //Do Nothing
     return;
   }
 
-  async disableBackgroundTracking() {
+  disableBackgroundTracking() {
     //Do Nothing
     return;
   }

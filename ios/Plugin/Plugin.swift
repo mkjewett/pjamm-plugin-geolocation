@@ -61,6 +61,10 @@ public class PJAMMGeolocation: CAPPlugin, CLLocationManagerDelegate {
         self.locationManager?.requestWhenInUseAuthorization()
         self.locationManager?.requestAlwaysAuthorization()
         self.locationManager?.requestLocation()
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 10) {
+            self.locationCall?.reject()
+        }
     }
 
     @objc func startLocation(_ call: CAPPluginCall) {
@@ -70,7 +74,7 @@ public class PJAMMGeolocation: CAPPlugin, CLLocationManagerDelegate {
     }
 
     @objc func stopLocation(_ call: CAPPluginCall) {
-        locationManager?.stopUpdatingLocation()
+        self.locationManager?.stopUpdatingLocation()
     }
 
     @objc func enableBackgroundTracking(_ call: CAPPluginCall) {
