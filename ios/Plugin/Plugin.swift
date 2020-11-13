@@ -11,8 +11,11 @@ import CoreLocation
 public class PJAMMGeolocation: CAPPlugin, CLLocationManagerDelegate {
 
     @objc private var locationManager:CLLocationManager?
-    @objc private var taskKey:NSInteger = 0
+    @objc private var taskKey:NSInteger             = 0
     @objc private var locationCalls:[CAPPluginCall] = []
+    @objc private var backgroundMode:Bool           = false
+    @objc private var geoRegion:CLRegion            = nil
+    @objc private var regionID:String               = "pjamm-geofence"
     
     @objc public override init!(bridge: CAPBridge!, pluginId: String!, pluginName: String!) {
         super.init(bridge: bridge, pluginId: pluginId, pluginName: pluginName);
@@ -24,7 +27,7 @@ public class PJAMMGeolocation: CAPPlugin, CLLocationManagerDelegate {
             self.locationManager?.activityType = CLActivityType.fitness
             self.locationManager?.showsBackgroundLocationIndicator = true
             self.locationManager?.pausesLocationUpdatesAutomatically = false
-            self.locationManager?.allowsBackgroundLocationUpdates = false
+            self.locationManager?.allowsBackgroundLocationUpdates = self.backgroundMode
         }
     }
     
@@ -54,11 +57,39 @@ public class PJAMMGeolocation: CAPPlugin, CLLocationManagerDelegate {
             })
             
             self.locationCalls.removeAll()
+            
+            self.updateGeofenceRegion(location: location)
         }
     }
     
-    public func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
+    @objc public func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
         print("location error: " + error.localizedDescription)
+    }
+    
+    @objc private func updateGeofenceRegion (location:CLLocation){
+        let state = UIApplication.shared.applicationState
+        
+        if self.geoRegion != nil {
+            self.locationManager?.stopMonitoring(for: self.geoRegion)
+            self.geoRegion = nil
+        }
+        
+        if self.backgroundMode == true && state != .active {
+            
+            self.geoRegion = CLCircularRegion(center: location.coordinate, radius: 50, identifier: self.regionID)
+            self.locationManager?.startMonitoring(for: self.geoRegion)
+        
+        }
+    }
+    
+    @objc private func clearAllPJAMMGeofenceReions(){
+        for region:CLRegion in self.locationManager?.monitoredRegion {
+            if region.identifier == self.regionID {
+                self.locationManager?.stopMonitoring(for: region)
+            }
+        }
+        
+        self.geoRegion = nil
     }
     
 /**
@@ -89,14 +120,18 @@ public class PJAMMGeolocation: CAPPlugin, CLLocationManagerDelegate {
 
     @objc func stopLocation(_ call: CAPPluginCall) {
         self.locationManager?.stopUpdatingLocation()
+        self.clearAllPJAMMGeofenceReions()
     }
 
     @objc func enableBackgroundTracking(_ call: CAPPluginCall) {
+        self.backgroundMode = true
         self.locationManager?.allowsBackgroundLocationUpdates = true
     }
 
     @objc func disableBackgroundTracking(_ call: CAPPluginCall) {
+        self.backgroundMode = false
         self.locationManager?.allowsBackgroundLocationUpdates = false
+        self.clearAllPJAMMGeofenceReions()
     }
 
 }
