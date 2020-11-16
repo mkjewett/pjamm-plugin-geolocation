@@ -14,7 +14,7 @@ public class PJAMMGeolocation: CAPPlugin, CLLocationManagerDelegate {
     @objc private var taskKey:NSInteger             = 0
     @objc private var locationCalls:[CAPPluginCall] = []
     @objc private var backgroundMode:Bool           = false
-    @objc private var geoRegion:CLRegion            = nil
+    @objc private var geoRegion:CLRegion?           = nil
     @objc private var regionID:String               = "pjamm-geofence"
     
     @objc public override init!(bridge: CAPBridge!, pluginId: String!, pluginName: String!) {
@@ -70,22 +70,22 @@ public class PJAMMGeolocation: CAPPlugin, CLLocationManagerDelegate {
         let state = UIApplication.shared.applicationState
         
         if self.geoRegion != nil {
-            self.locationManager?.stopMonitoring(for: self.geoRegion)
+            self.locationManager?.stopMonitoring(for: self.geoRegion!)
             self.geoRegion = nil
         }
         
         if self.backgroundMode == true && state != .active {
             
             self.geoRegion = CLCircularRegion(center: location.coordinate, radius: 50, identifier: self.regionID)
-            self.locationManager?.startMonitoring(for: self.geoRegion)
+            self.locationManager?.startMonitoring(for: self.geoRegion!)
         
         }
     }
     
     @objc private func clearAllPJAMMGeofenceReions(){
-        for region:CLRegion in self.locationManager?.monitoredRegion {
-            if region.identifier == self.regionID {
-                self.locationManager?.stopMonitoring(for: region)
+        for region:CLRegion? in self.locationManager!.monitoredRegions {
+            if region?.identifier == self.regionID {
+                self.locationManager?.stopMonitoring(for: region!)
             }
         }
         
