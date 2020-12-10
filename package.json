@@ -1,6 +1,6 @@
 {
   "name": "pjamm-plugin-geolocation",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Foreground and Background Geolocation Plugin",
   "main": "dist/plugin.js",
   "module": "dist/esm/index.js",
