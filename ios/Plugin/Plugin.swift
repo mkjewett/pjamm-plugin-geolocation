@@ -173,7 +173,7 @@ public class PJAMMGeolocation: CAPPlugin, CLLocationManagerDelegate, UIApplicati
             if self.resumeWatchOk || (self.lastWatchSend.timeIntervalSinceNow < -60 && location.horizontalAccuracy < 40){
                 
                 self.notifyListeners("pjammLocation", data: position)
-                lastWatchSend = Date()
+                self.lastWatchSend = Date()
             }
             
             self.locationCalls.removeAll()
