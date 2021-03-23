@@ -12,7 +12,7 @@ export class PJAMMGeolocationWeb extends WebPlugin implements PJAMMGeolocationPl
     });
   }
 
-  async getLocation(options?:any):Promise<Position>{
+  async getLocation(options?:any):Promise<any>{
     
     let posOptions:any = {
       enableHighAccuracy: true,
