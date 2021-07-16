@@ -16,7 +16,7 @@ import CoreLocation
 
 
 @objc(PJAMMGeolocationPlugin)
-public class PJAMMGeolocationPlugin: CAPPlugin {
+public class PJAMMGeolocationPlugin: CAPPlugin, CLLocationManagerDelegate, UIApplicationDelegate, UNUserNotificationCenterDelegate {
     private let implementation = PJAMMGeolocation()
 
     @objc private var locationManager:CLLocationManager?
