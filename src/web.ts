@@ -1,18 +1,15 @@
 import { WebPlugin } from '@capacitor/core';
-import { PJAMMGeolocationPlugin } from './definitions';
+
+import type { PJAMMGeolocationPlugin } from './definitions';
 
 export class PJAMMGeolocationWeb extends WebPlugin implements PJAMMGeolocationPlugin {
-  
   private watchID:number|null = null;
 
-  constructor() {
-    super({
-      name: 'PJAMMGeolocation',
-      platforms: ['web'],
-    });
-  }
-
   async getLocation(options?:any):Promise<any>{
+
+    if(typeof navigator === 'undefined' || !navigator.geolocation) {
+      throw this.unavailable('Geolocation API not available in this browser.');
+    }
     
     let posOptions:any = {
       enableHighAccuracy: true,
@@ -25,18 +22,19 @@ export class PJAMMGeolocationWeb extends WebPlugin implements PJAMMGeolocationPl
     if(options && options.maximumAge != null)         posOptions.maximumAge         = options.maximumAge;
     
     return new Promise((resolve, reject) => {
-      return this.requestPermissions().then((_result) => {
-        window.navigator.geolocation.getCurrentPosition((pos) => {
-          resolve(pos);
-        }, (err) => {
-          reject(err);
-        }, posOptions);
-      });
+      navigator.geolocation.getCurrentPosition((pos) => {
+        resolve(pos);
+      }, (err) => {
+        reject(err);
+      }, posOptions);
     });
 
   }
-
   startLocation(options?:any) {
+
+    if(typeof navigator === 'undefined' || !navigator.geolocation) {
+      throw this.unavailable('Geolocation API not available in this browser.');
+    }
 
     let posOptions:any = {
       enableHighAccuracy: true,
@@ -52,7 +50,7 @@ export class PJAMMGeolocationWeb extends WebPlugin implements PJAMMGeolocationPl
       this.stopLocation();
     }
 
-    let id:number = window.navigator.geolocation.watchPosition((pos) => {
+    let id:number = navigator.geolocation.watchPosition((pos) => {
       this.notifyListeners('pjammLocation', pos);
     }, (err) => {
       this.notifyListeners('pjammLocationError', err);
@@ -60,8 +58,11 @@ export class PJAMMGeolocationWeb extends WebPlugin implements PJAMMGeolocationPl
 
     this.watchID = id;
   }
-
   stopLocation() {
+    if(typeof navigator === 'undefined' || !navigator.geolocation) {
+      throw this.unavailable('Geolocation API not available in this browser.');
+    }
+    
     if(this.watchID != null){
       window.navigator.geolocation.clearWatch(this.watchID);
       this.watchID = null;
@@ -69,19 +70,9 @@ export class PJAMMGeolocationWeb extends WebPlugin implements PJAMMGeolocationPl
   }
 
   enableBackgroundTracking() {
-    //Do Nothing
-    return;
+    throw this.unimplemented('Not implemented on web.');
   }
-
   disableBackgroundTracking() {
-    //Do Nothing
-    return;
+    throw this.unimplemented('Not implemented on web.');
   }
 }
-
-const PJAMMGeolocation = new PJAMMGeolocationWeb();
-
-export { PJAMMGeolocation };
-
-import { registerWebPlugin } from '@capacitor/core';
-registerWebPlugin(PJAMMGeolocation);

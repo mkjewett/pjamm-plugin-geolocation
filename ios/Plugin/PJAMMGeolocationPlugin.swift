@@ -14,8 +14,10 @@ import CoreLocation
     case final
 }
 
-@objc(PJAMMGeolocation)
-public class PJAMMGeolocation: CAPPlugin, CLLocationManagerDelegate, UIApplicationDelegate, UNUserNotificationCenterDelegate {
+
+@objc(PJAMMGeolocationPlugin)
+public class PJAMMGeolocationPlugin: CAPPlugin {
+    private let implementation = PJAMMGeolocation()
 
     @objc private var locationManager:CLLocationManager?
     @objc private var notificationCenter:UNUserNotificationCenter?
@@ -267,11 +269,6 @@ public class PJAMMGeolocation: CAPPlugin, CLLocationManagerDelegate, UIApplicati
         let dist = round(location.distance(from: self.movementLocation!))
         let time = round(location.timestamp.timeIntervalSince1970 - (self.movementLocation?.timestamp.timeIntervalSince1970)!)
         let speed = location.speed
-//        let acc = round(location.horizontalAccuracy)
-//
-//        let paused:String = (self.locationPaused == .secondary) ? "secondary" : (self.locationPaused == .none) ? "none" : "initial"
-//
-//        print("PJAMMGeo - movement check(\(paused)): dist = \(dist), time = \(time), speed = \(speed), acc = \(acc)")
         
         switch self.locationPaused {
         
@@ -411,9 +408,9 @@ public class PJAMMGeolocation: CAPPlugin, CLLocationManagerDelegate, UIApplicati
         
     }
     
-/**
- * Capacitor Plugin Methods
- */
+    /**
+    * Capacitor Plugin Methods
+    */
     
     @objc func getLocation(_ call: CAPPluginCall) {
         self.locationCalls.append(call)
@@ -465,6 +462,4 @@ public class PJAMMGeolocation: CAPPlugin, CLLocationManagerDelegate, UIApplicati
         self.locationManager?.allowsBackgroundLocationUpdates = false
         self.clearGeofenceReion()
     }
-
 }
-
