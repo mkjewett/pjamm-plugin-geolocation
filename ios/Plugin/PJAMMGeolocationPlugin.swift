@@ -19,31 +19,33 @@ import CoreLocation
 public class PJAMMGeolocationPlugin: CAPPlugin, CLLocationManagerDelegate, UIApplicationDelegate, UNUserNotificationCenterDelegate {
     private let implementation = PJAMMGeolocation()
 
-    @objc private var locationManager:CLLocationManager?
-    @objc private var notificationCenter:UNUserNotificationCenter?
+    private var locationManager:CLLocationManager?
+    private var notificationCenter:UNUserNotificationCenter?
     
-    @objc private var locationCalls:[CAPPluginCall] = []
-    @objc private var backgroundMode:Bool           = false
-    @objc private var locationPaused:PauseLevel     = .none
-    @objc private var locationStarted:Bool          = false
+//    @objc private var locationCalls:[CAPPluginCall] = []
+    private var callQueue:[String]            = []
+    private var backgroundMode:Bool           = false
+    private var locationPaused:PauseLevel     = .none
+    private var locationStarted:Bool          = false
     
-    @objc private var activityType:CLActivityType   = .automotiveNavigation
+    private var activityType:CLActivityType   = .automotiveNavigation
     
-    @objc private var resumeDate:Date               = Date()
-    @objc private var resumeWatchOk:Bool            = false
-    @objc private var movementLocation:CLLocation?  = nil
-    @objc private var lastWatchSend:Date            = Date()
+    private var resumeDate:Date               = Date()
+    private var resumeWatchOk:Bool            = false
+    private var movementLocation:CLLocation?  = nil
+    private var lastWatchSend:Date            = Date()
     
-    @objc private var geoRegionRelaunch:CLRegion?   = nil
-    @objc private var geoRegionResume:CLRegion?     = nil
-    @objc private var geoRelaunchID:String          = "pjamm-geofence-relaunch"
-    @objc private var geoResumeID:String            = "pjamm-geofence-resume"
+    private var geoRegionRelaunch:CLRegion?   = nil
+    private var geoRegionResume:CLRegion?     = nil
+    private var geoRelaunchID:String          = "pjamm-geofence-relaunch"
+    private var geoResumeID:String            = "pjamm-geofence-resume"
     
     @objc public override func load() {
-    
-        print("PJAMMGeo - Plugin Load")
         
-        DispatchQueue.main.async {
+        DispatchQueue.main.async { [weak self] in
+            
+            guard let self = self else { return }
+            
             if self.locationManager == nil {
                 self.launchLocationManager()
             }
@@ -68,7 +70,10 @@ public class PJAMMGeolocationPlugin: CAPPlugin, CLLocationManagerDelegate, UIApp
             }
         }
         
-        DispatchQueue.main.async {
+        DispatchQueue.main.async { [weak self] in
+            
+            guard let self = self else { return }
+            
             if self.locationManager == nil {
                 self.launchLocationManager()
             }
@@ -79,7 +84,8 @@ public class PJAMMGeolocationPlugin: CAPPlugin, CLLocationManagerDelegate, UIApp
         }
     }
     
-    @objc public func didBecomeActive(notification:Notification){
+    @objc public func didBecomeActive(notification:Notification) {
+    
         if self.locationPaused != .none && self.locationStarted {
             self.resumeLocationUpdates()
         }
@@ -135,40 +141,60 @@ public class PJAMMGeolocationPlugin: CAPPlugin, CLLocationManagerDelegate, UIApp
     
     @objc public func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
         
-        if self.lastWatchSend.timeIntervalSinceNow > -0.5 {
+        if lastWatchSend.timeIntervalSinceNow > -0.5 {
             return
         }
 
         if let location = locations.last {
             
-            let position = self.convertLocationToPosition(location: location)
+            let position = convertLocationToPosition(location: location)
 
             if locationPaused == .none {
                 
-                if !self.resumeWatchOk && location.horizontalAccuracy < 20 {
+                if !resumeWatchOk && location.horizontalAccuracy < 20 {
+                    resumeWatchOk = true
+                }
+                
+                if !resumeWatchOk && self.resumeDate.timeIntervalSinceNow < -5 {
                     self.resumeWatchOk = true
                 }
                 
-                if !self.resumeWatchOk && self.resumeDate.timeIntervalSinceNow < -5 {
-                    self.resumeWatchOk = true
-                }
-                
-                self.locationCalls.forEach( { call in
-                    call.resolve(position)
+//                self.locationCalls.forEach( { call in
+//                    call.resolve(position)
+//                })
+                self.callQueue.forEach({callId in
+                    if let call = bridge?.savedCall(withID: callId) {
+                        call.resolve(position)
+                        bridge?.releaseCall(withID: callId)
+                    }
                 })
+                
+                
                 
                 self.updateGeofenceRegion(location: location, id: self.geoRelaunchID)
                 
             } else if self.movementLocation != nil {
                 let lastPos = self.convertLocationToPosition(location: self.movementLocation!)
                 
-                self.locationCalls.forEach( { call in
-                    call.resolve(lastPos)
+//                self.locationCalls.forEach( { call in
+//                    call.resolve(lastPos)
+//                })
+                self.callQueue.forEach({callId in
+                    if let call = bridge?.savedCall(withID: callId) {
+                        call.resolve(lastPos)
+                        bridge?.releaseCall(withID: callId)
+                    }
                 })
                 
             } else {
-                self.locationCalls.forEach( { call in
-                    call.resolve(position)
+//                self.locationCalls.forEach( { call in
+//                    call.resolve(position)
+//                })
+                self.callQueue.forEach({callId in
+                    if let call = bridge?.savedCall(withID: callId) {
+                        call.resolve(position)
+                        bridge?.releaseCall(withID: callId)
+                    }
                 })
             }
             
@@ -178,7 +204,8 @@ public class PJAMMGeolocationPlugin: CAPPlugin, CLLocationManagerDelegate, UIApp
                 self.lastWatchSend = Date()
             }
             
-            self.locationCalls.removeAll()
+//            self.locationCalls.removeAll()
+            self.callQueue.removeAll()
             self.checkUserMovement(location: location)
         }
     }
@@ -351,7 +378,6 @@ public class PJAMMGeolocationPlugin: CAPPlugin, CLLocationManagerDelegate, UIApp
             self.sendNotification(title: "Location Alert", body: "Location Updates Paused", identifier: "location-paused")
         }
         self.updateGeofenceRegion(location: location, id: self.geoResumeID)
-        
     }
     
     @objc private func updateGeofenceRegion(location:CLLocation, id:String){
@@ -413,16 +439,29 @@ public class PJAMMGeolocationPlugin: CAPPlugin, CLLocationManagerDelegate, UIApp
     */
     
     @objc func getLocation(_ call: CAPPluginCall) {
-        self.locationCalls.append(call)
+//        self.locationCalls.append(call)
+        
+        call.keepAlive = true;
+        self.callQueue.append(call.callbackId)
+        
         self.locationManager?.requestWhenInUseAuthorization()
         self.locationManager?.requestAlwaysAuthorization()
         self.locationManager?.requestLocation()
 
-        DispatchQueue.main.asyncAfter(deadline: .now() + 10) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 10) { [weak self] in
             
-            if(self.locationCalls.contains(call)){
-                call.reject("Error: Timeout has occured")
-                self.locationCalls.removeAll(where: { $0 == call })
+            guard let self = self else { return }
+            
+//            if(self.locationCalls.contains(call)){
+//                call.reject("Error: Timeout has occured")
+//                self.locationCalls.removeAll(where: { $0 == call })
+//            }
+            
+            if self.callQueue.contains(call.callbackId) {
+                if let call = self.bridge?.savedCall(withID: call.callbackId) {
+                    self.bridge?.releaseCall(withID: call.callbackId)
+                    self.callQueue.removeAll(where: {$0 == call.callbackId})
+                }
             }
 
         }
@@ -430,7 +469,9 @@ public class PJAMMGeolocationPlugin: CAPPlugin, CLLocationManagerDelegate, UIApp
 
     @objc func startLocation(_ call: CAPPluginCall) {
         
-        DispatchQueue.main.async {
+        DispatchQueue.main.async { [weak self] in
+            
+            guard let self = self else { return }
             
             if self.locationManager == nil {
                 self.launchLocationManager()
@@ -442,6 +483,8 @@ public class PJAMMGeolocationPlugin: CAPPlugin, CLLocationManagerDelegate, UIApp
             self.locationManager?.startUpdatingLocation()
             self.locationStarted = true;
         }
+        
+        self.locationManager?.requestWhenInUseAuthorization()
 
     }
 
