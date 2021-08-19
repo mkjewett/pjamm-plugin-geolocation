@@ -212,7 +212,7 @@ public class PJAMMGeolocationPlugin: CAPPlugin, CLLocationManagerDelegate, UIApp
     
     @objc public func locationManagerDidPauseLocationUpdates(_ manager: CLLocationManager) {
         
-        self.pauseLocationUpdates(location: manager.location!, level: .final)
+        self.pauseLocationUpdates(location: manager.location, level: .final)
         self.locationManager?.startUpdatingLocation()
         
         self.sendNotification(title: "Location Alert", body: "Location accuracy reduced to save power", identifier: "location-accuracy-reduced")
@@ -293,8 +293,10 @@ public class PJAMMGeolocationPlugin: CAPPlugin, CLLocationManagerDelegate, UIApp
             return
         }
         
-        let dist = round(location.distance(from: self.movementLocation!))
-        let time = round(location.timestamp.timeIntervalSince1970 - (self.movementLocation?.timestamp.timeIntervalSince1970)!)
+        guard let movementLocation = self.movementLocation else { return }
+        
+        let dist = round(location.distance(from: movementLocation))
+        let time = round(location.timestamp.timeIntervalSince1970 - movementLocation.timestamp.timeIntervalSince1970)
         let speed = location.speed
         
         switch self.locationPaused {
@@ -367,7 +369,10 @@ public class PJAMMGeolocationPlugin: CAPPlugin, CLLocationManagerDelegate, UIApp
         }
     }
     
-    @objc private func pauseLocationUpdates(location:CLLocation, level:PauseLevel = .initial){
+    @objc private func pauseLocationUpdates(location:CLLocation?, level:PauseLevel = .initial){
+        
+        let location = location ?? self.locationManager?.location
+        
         self.movementLocation   = location
         self.locationPaused     = level
         self.resumeWatchOk      = false
@@ -377,7 +382,10 @@ public class PJAMMGeolocationPlugin: CAPPlugin, CLLocationManagerDelegate, UIApp
         if self.backgroundMode && self.locationPaused == .none {
             self.sendNotification(title: "Location Alert", body: "Location Updates Paused", identifier: "location-paused")
         }
-        self.updateGeofenceRegion(location: location, id: self.geoResumeID)
+        
+        guard let locationIn = location else { return }
+        
+        self.updateGeofenceRegion(location: locationIn, id: self.geoResumeID)
     }
     
     @objc private func updateGeofenceRegion(location:CLLocation, id:String){
@@ -396,7 +404,10 @@ public class PJAMMGeolocationPlugin: CAPPlugin, CLLocationManagerDelegate, UIApp
                 self.geoRegionRelaunch = CLCircularRegion(center: location.coordinate, radius: 50, identifier: self.geoRelaunchID)
                 self.geoRegionRelaunch?.notifyOnExit = true;
         
-                self.locationManager?.startMonitoring(for: self.geoRegionRelaunch!)
+                
+                if self.geoRegionRelaunch != nil {
+                    self.locationManager?.startMonitoring(for: self.geoRegionRelaunch!)
+                }
             }
             
             break
@@ -410,8 +421,10 @@ public class PJAMMGeolocationPlugin: CAPPlugin, CLLocationManagerDelegate, UIApp
             
             self.geoRegionResume = CLCircularRegion(center: location.coordinate, radius: 50, identifier: self.geoResumeID)
             self.geoRegionResume?.notifyOnExit = true;
-    
-            self.locationManager?.startMonitoring(for: self.geoRegionResume!)
+            
+            if(self.geoRegionResume != nil){
+                self.locationManager?.startMonitoring(for: self.geoRegionResume!)
+            }
             
             break
             
