@@ -290,7 +290,7 @@ public class PJAMMGeolocationPlugin: CAPPlugin, CLLocationManagerDelegate, UIApp
         case .final:
             
             //Logic to resume location events
-            if speed > 0.5 || dist > 50 {
+            if speed > 0.25 || dist > 50 {
                 self.resumeLocationUpdates(location: location)
             }
             
@@ -299,9 +299,9 @@ public class PJAMMGeolocationPlugin: CAPPlugin, CLLocationManagerDelegate, UIApp
         case .secondary:
             
             //Logic to resume location events
-            if dist < 50 && speed < 0.5 {
+            if dist < 50 && speed < 0.25 {
                 //Do Nothing
-            } else if speed > 0.5 || dist > 100 {
+            } else if speed > 0.25 || dist > 100 {
                 self.resumeLocationUpdates(location: location)
             }
             
@@ -309,10 +309,10 @@ public class PJAMMGeolocationPlugin: CAPPlugin, CLLocationManagerDelegate, UIApp
             
         case .initial:
             
-            if dist > 50 || speed > 0.5 {
+            if dist > 50 || speed > 0.25 {
                 //Logic to resume location events
                 self.resumeLocationUpdates(location: location)
-            } else if time > 120 && speed < 0.5 {
+            } else if time > 1800 && speed < 0.25 {
                 //Logic to increase pause
                 self.pauseLocationUpdates(location: location, level: .secondary)
             }
@@ -324,7 +324,7 @@ public class PJAMMGeolocationPlugin: CAPPlugin, CLLocationManagerDelegate, UIApp
             //Logic to pause location events
             if dist > 50 {
                 self.movementLocation = location
-            } else if time > 60 && speed < 0.5 {
+            } else if time > 900 && speed < 0.25 {
                 self.pauseLocationUpdates(location: location, level: .initial)
             }
             
