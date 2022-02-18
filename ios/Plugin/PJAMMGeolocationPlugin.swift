@@ -198,10 +198,10 @@ public class PJAMMGeolocationPlugin: CAPPlugin, CLLocationManagerDelegate, UIApp
     
     @objc public func locationManagerDidPauseLocationUpdates(_ manager: CLLocationManager) {
         
-        self.pauseLocationUpdates(location: manager.location, level: .final)
+        self.pauseLocationUpdates(location: manager.location, level: .initial)
         self.locationManager?.startUpdatingLocation()
         
-        self.sendNotification(title: "Location Alert", body: "Location accuracy reduced to save power", identifier: "location-accuracy-reduced")
+        // self.sendNotification(title: "Location Alert", body: "Location accuracy reduced to save power", identifier: "location-accuracy-reduced")
         
     }
     
@@ -234,19 +234,19 @@ public class PJAMMGeolocationPlugin: CAPPlugin, CLLocationManagerDelegate, UIApp
     @objc private func setDesiredLocationAccuracy(){
         
         if self.locationPaused == .final {
-            
+            // print("PJAMMGeo Acc - Set to 1 km")
             self.locationManager?.desiredAccuracy = kCLLocationAccuracyKilometer
             
         } else if self.locationPaused == .secondary {
-            
+            // print("PJAMMGeo Acc - Set to 100 meters")
             self.locationManager?.desiredAccuracy = kCLLocationAccuracyHundredMeters
             
         } else if self.locationPaused == .initial {
-            
+            // print("PJAMMGeo Acc - Set to 10 meters")
             self.locationManager?.desiredAccuracy = kCLLocationAccuracyNearestTenMeters
             
         } else {
-        
+            // print("PJAMMGeo Acc - Set to best")
             self.locationManager?.desiredAccuracy = kCLLocationAccuracyBest
             
         }
@@ -266,7 +266,8 @@ public class PJAMMGeolocationPlugin: CAPPlugin, CLLocationManagerDelegate, UIApp
                 "latitude":location.coordinate.latitude,
                 "longitude":location.coordinate.longitude,
                 "speed":location.speed
-            ]
+            ],
+            "isPaused": (self.locationPaused != .none)
         ]
         
         return position
@@ -275,6 +276,7 @@ public class PJAMMGeolocationPlugin: CAPPlugin, CLLocationManagerDelegate, UIApp
     @objc private func checkUserMovement (location:CLLocation){
         
         if self.movementLocation == nil {
+            // print("PJAMMGeo Acc - Movement Location set, check nil")
             self.movementLocation = location
             return
         }
@@ -312,7 +314,11 @@ public class PJAMMGeolocationPlugin: CAPPlugin, CLLocationManagerDelegate, UIApp
             if dist > 50 || speed > 0.25 {
                 //Logic to resume location events
                 self.resumeLocationUpdates(location: location)
+<<<<<<< Updated upstream
             } else if time > 1800 && speed < 0.25 {
+=======
+            } else if time > 3600 && speed < 0.25 {
+>>>>>>> Stashed changes
                 //Logic to increase pause
                 self.pauseLocationUpdates(location: location, level: .secondary)
             }
@@ -323,8 +329,13 @@ public class PJAMMGeolocationPlugin: CAPPlugin, CLLocationManagerDelegate, UIApp
             
             //Logic to pause location events
             if dist > 50 {
+                // print("PJAMMGeo Acc - Movement Location set, check > 50, time =  \(time)")
                 self.movementLocation = location
+<<<<<<< Updated upstream
             } else if time > 900 && speed < 0.25 {
+=======
+            } else if time > 1800 && speed < 0.25 {
+>>>>>>> Stashed changes
                 self.pauseLocationUpdates(location: location, level: .initial)
             }
             
@@ -338,6 +349,7 @@ public class PJAMMGeolocationPlugin: CAPPlugin, CLLocationManagerDelegate, UIApp
     
     @objc private func resumeLocationUpdates(location:CLLocation? = nil){
         
+        // print("PJAMMGeo Acc - Movement Location set, resume")
         self.movementLocation = location
         
         if locationPaused == .none {
@@ -359,6 +371,7 @@ public class PJAMMGeolocationPlugin: CAPPlugin, CLLocationManagerDelegate, UIApp
         
         let location = location ?? self.locationManager?.location
         
+        // print("PJAMMGeo Acc - Movement Location set, pause")
         self.movementLocation   = location
         self.locationPaused     = level
         self.resumeWatchOk      = false
