@@ -34,6 +34,7 @@ public class PJAMMGeolocationPlugin: CAPPlugin, CLLocationManagerDelegate, UIApp
     private var resumeWatchOk:Bool            = false
     private var movementLocation:CLLocation?  = nil
     private var lastWatchSend:Date            = Date()
+    private var watchWaitingAuth:Bool         = false
     
     private var geoRegionRelaunch:CLRegion?   = nil
     private var geoRegionResume:CLRegion?     = nil
@@ -198,10 +199,10 @@ public class PJAMMGeolocationPlugin: CAPPlugin, CLLocationManagerDelegate, UIApp
     
     @objc public func locationManagerDidPauseLocationUpdates(_ manager: CLLocationManager) {
         
-        self.pauseLocationUpdates(location: manager.location, level: .initial)
+        self.pauseLocationUpdates(location: manager.location, level: .final)
         self.locationManager?.startUpdatingLocation()
         
-        // self.sendNotification(title: "Location Alert", body: "Location accuracy reduced to save power", identifier: "location-accuracy-reduced")
+        self.sendNotification(title: "Location Alert", body: "Location accuracy reduced to save power", identifier: "location-accuracy-reduced")
         
     }
     
@@ -215,6 +216,21 @@ public class PJAMMGeolocationPlugin: CAPPlugin, CLLocationManagerDelegate, UIApp
     
     @objc public func locationManager(_ manager: CLLocationManager, monitoringDidFailFor region: CLRegion?, withError error: Error) {
         print("PJAMMGeo - Error monitoring region")
+    }
+    
+    @objc public func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
+        if self.watchWaitingAuth {
+            self.resumeLocationUpdates()
+            self.locationManager?.stopUpdatingLocation()
+            self.locationManager?.startUpdatingLocation()
+            self.locationStarted = true
+        }
+        
+        if !self.callQueue.isEmpty {
+            self.locationManager?.requestLocation()
+        }
+        
+        self.watchWaitingAuth = false
     }
     
     @objc public func locationManager(_ manager: CLLocationManager, didExitRegion region: CLRegion) {
@@ -234,19 +250,19 @@ public class PJAMMGeolocationPlugin: CAPPlugin, CLLocationManagerDelegate, UIApp
     @objc private func setDesiredLocationAccuracy(){
         
         if self.locationPaused == .final {
-            // print("PJAMMGeo Acc - Set to 1 km")
+            
             self.locationManager?.desiredAccuracy = kCLLocationAccuracyKilometer
             
         } else if self.locationPaused == .secondary {
-            // print("PJAMMGeo Acc - Set to 100 meters")
+            
             self.locationManager?.desiredAccuracy = kCLLocationAccuracyHundredMeters
             
         } else if self.locationPaused == .initial {
-            // print("PJAMMGeo Acc - Set to 10 meters")
+            
             self.locationManager?.desiredAccuracy = kCLLocationAccuracyNearestTenMeters
             
         } else {
-            // print("PJAMMGeo Acc - Set to best")
+        
             self.locationManager?.desiredAccuracy = kCLLocationAccuracyBest
             
         }
@@ -266,8 +282,7 @@ public class PJAMMGeolocationPlugin: CAPPlugin, CLLocationManagerDelegate, UIApp
                 "latitude":location.coordinate.latitude,
                 "longitude":location.coordinate.longitude,
                 "speed":location.speed
-            ],
-            "isPaused": (self.locationPaused != .none)
+            ]
         ]
         
         return position
@@ -276,7 +291,6 @@ public class PJAMMGeolocationPlugin: CAPPlugin, CLLocationManagerDelegate, UIApp
     @objc private func checkUserMovement (location:CLLocation){
         
         if self.movementLocation == nil {
-            // print("PJAMMGeo Acc - Movement Location set, check nil")
             self.movementLocation = location
             return
         }
@@ -314,11 +328,7 @@ public class PJAMMGeolocationPlugin: CAPPlugin, CLLocationManagerDelegate, UIApp
             if dist > 50 || speed > 0.25 {
                 //Logic to resume location events
                 self.resumeLocationUpdates(location: location)
-<<<<<<< Updated upstream
-            } else if time > 1800 && speed < 0.25 {
-=======
             } else if time > 3600 && speed < 0.25 {
->>>>>>> Stashed changes
                 //Logic to increase pause
                 self.pauseLocationUpdates(location: location, level: .secondary)
             }
@@ -329,13 +339,8 @@ public class PJAMMGeolocationPlugin: CAPPlugin, CLLocationManagerDelegate, UIApp
             
             //Logic to pause location events
             if dist > 50 {
-                // print("PJAMMGeo Acc - Movement Location set, check > 50, time =  \(time)")
                 self.movementLocation = location
-<<<<<<< Updated upstream
-            } else if time > 900 && speed < 0.25 {
-=======
             } else if time > 1800 && speed < 0.25 {
->>>>>>> Stashed changes
                 self.pauseLocationUpdates(location: location, level: .initial)
             }
             
@@ -349,7 +354,6 @@ public class PJAMMGeolocationPlugin: CAPPlugin, CLLocationManagerDelegate, UIApp
     
     @objc private func resumeLocationUpdates(location:CLLocation? = nil){
         
-        // print("PJAMMGeo Acc - Movement Location set, resume")
         self.movementLocation = location
         
         if locationPaused == .none {
@@ -371,7 +375,6 @@ public class PJAMMGeolocationPlugin: CAPPlugin, CLLocationManagerDelegate, UIApp
         
         let location = location ?? self.locationManager?.location
         
-        // print("PJAMMGeo Acc - Movement Location set, pause")
         self.movementLocation   = location
         self.locationPaused     = level
         self.resumeWatchOk      = false
@@ -458,9 +461,12 @@ public class PJAMMGeolocationPlugin: CAPPlugin, CLLocationManagerDelegate, UIApp
         DispatchQueue.main.async { [weak self] in
             guard let self = self else { return }
             
-            self.locationManager?.requestWhenInUseAuthorization()
-            self.locationManager?.requestAlwaysAuthorization()
-            self.locationManager?.requestLocation()
+            if CLLocationManager.authorizationStatus() == .notDetermined {
+                self.locationManager?.requestWhenInUseAuthorization()
+            } else {
+                self.locationManager?.requestLocation()
+            }
+            
         }
         
         DispatchQueue.main.asyncAfter(deadline: .now() + 10) { [weak self] in
@@ -469,12 +475,13 @@ public class PJAMMGeolocationPlugin: CAPPlugin, CLLocationManagerDelegate, UIApp
             
             if self.callQueue.contains(call.callbackId) {
                 if let call = self.bridge?.savedCall(withID: call.callbackId) {
+                    call.reject("Location Timeout")
                     self.bridge?.releaseCall(withID: call.callbackId)
                     self.callQueue.removeAll(where: {$0 == call.callbackId})
                 }
             }
-
         }
+        
     }
 
     @objc func startLocation(_ call: CAPPluginCall) {
@@ -487,17 +494,24 @@ public class PJAMMGeolocationPlugin: CAPPlugin, CLLocationManagerDelegate, UIApp
                 self.launchLocationManager()
             }
             
-            self.locationManager?.requestWhenInUseAuthorization()
-            self.locationManager?.requestAlwaysAuthorization()
-            self.resumeLocationUpdates()
-            self.locationManager?.stopUpdatingLocation()
-            self.locationManager?.startUpdatingLocation()
-            self.locationStarted = true;
+            switch CLLocationManager.authorizationStatus() {
+            case .notDetermined:
+                self.watchWaitingAuth = true
+                self.locationManager?.requestWhenInUseAuthorization()
+                break
+            case .authorizedWhenInUse:
+                self.locationManager?.requestAlwaysAuthorization()
+            default:
+                self.resumeLocationUpdates()
+                self.locationManager?.stopUpdatingLocation()
+                self.locationManager?.startUpdatingLocation()
+                self.locationStarted = true
+            }
         }
-        
     }
 
     @objc func stopLocation(_ call: CAPPluginCall) {
+        self.watchWaitingAuth = false
         self.locationManager?.stopUpdatingLocation()
         self.clearGeofenceReion()
         self.locationStarted = false
