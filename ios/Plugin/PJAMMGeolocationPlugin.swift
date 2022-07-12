@@ -461,12 +461,9 @@ public class PJAMMGeolocationPlugin: CAPPlugin, CLLocationManagerDelegate, UIApp
         DispatchQueue.main.async { [weak self] in
             guard let self = self else { return }
             
-            if CLLocationManager.authorizationStatus() == .notDetermined {
-                self.locationManager?.requestWhenInUseAuthorization()
-            } else {
-                self.locationManager?.requestLocation()
-            }
-            
+            self.locationManager?.requestWhenInUseAuthorization()
+            self.locationManager?.requestAlwaysAuthorization()
+            self.locationManager?.requestLocation()
         }
         
         DispatchQueue.main.asyncAfter(deadline: .now() + 10) { [weak self] in
@@ -493,20 +490,13 @@ public class PJAMMGeolocationPlugin: CAPPlugin, CLLocationManagerDelegate, UIApp
             if self.locationManager == nil {
                 self.launchLocationManager()
             }
-            
-            switch CLLocationManager.authorizationStatus() {
-            case .notDetermined:
-                self.watchWaitingAuth = true
-                self.locationManager?.requestWhenInUseAuthorization()
-                break
-            case .authorizedWhenInUse:
-                self.locationManager?.requestAlwaysAuthorization()
-            default:
-                self.resumeLocationUpdates()
-                self.locationManager?.stopUpdatingLocation()
-                self.locationManager?.startUpdatingLocation()
-                self.locationStarted = true
-            }
+
+            self.locationManager?.requestWhenInUseAuthorization()
+            self.locationManager?.requestAlwaysAuthorization()
+            self.resumeLocationUpdates()
+            self.locationManager?.stopUpdatingLocation()
+            self.locationManager?.startUpdatingLocation()
+            self.locationStarted = true
         }
     }
 
