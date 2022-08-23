@@ -27,8 +27,9 @@ public class PJAMMGeolocationPlugin: CAPPlugin, CLLocationManagerDelegate, UIApp
     private var backgroundMode:Bool           = false
     private var locationPaused:PauseLevel     = .none
     private var locationStarted:Bool          = false
+    private var significantChangesOnly:Bool   = false
     
-    private var activityType:CLActivityType   = .automotiveNavigation
+    private var activityType:CLActivityType   = .fitness
     
     private var resumeDate:Date               = Date()
     private var resumeWatchOk:Bool            = false
@@ -68,6 +69,7 @@ public class PJAMMGeolocationPlugin: CAPPlugin, CLLocationManagerDelegate, UIApp
             
             if userInfo.keys.contains(UIApplication.LaunchOptionsKey.location) {
                 // App Launched due to Location Event
+                print("PJAMMGeo - App Launched due to location event")
             }
         }
         
@@ -148,6 +150,10 @@ public class PJAMMGeolocationPlugin: CAPPlugin, CLLocationManagerDelegate, UIApp
 
             if locationPaused == .none {
                 
+                if self.significantChangesOnly {
+                    self.resumeWatchOk = true
+                }
+                
                 if !resumeWatchOk && location.horizontalAccuracy < 20 {
                     self.resumeWatchOk = true
                 }
@@ -163,9 +169,10 @@ public class PJAMMGeolocationPlugin: CAPPlugin, CLLocationManagerDelegate, UIApp
                     }
                 })
                 
-                self.updateGeofenceRegion(location: location, id: self.geoRelaunchID)
+                // self.updateGeofenceRegion(location: location, id: self.geoRelaunchID)
                 
             } else if self.movementLocation != nil {
+                
                 let lastPos = self.convertLocationToPosition(location: self.movementLocation!)
                 
                 self.callQueue.forEach({callId in
@@ -186,10 +193,8 @@ public class PJAMMGeolocationPlugin: CAPPlugin, CLLocationManagerDelegate, UIApp
             }
             
             if self.resumeWatchOk || (self.lastWatchSend.timeIntervalSinceNow < -60 && location.horizontalAccuracy < 40){
-                
                 self.notifyListeners("pjammLocation", data: position)
                 self.lastWatchSend = Date()
-                
             }
             
             self.callQueue.removeAll()
@@ -200,9 +205,13 @@ public class PJAMMGeolocationPlugin: CAPPlugin, CLLocationManagerDelegate, UIApp
     @objc public func locationManagerDidPauseLocationUpdates(_ manager: CLLocationManager) {
         
         self.pauseLocationUpdates(location: manager.location, level: .final)
-        self.locationManager?.startUpdatingLocation()
         
-        self.sendNotification(title: "Location Alert", body: "Location accuracy reduced to save power", identifier: "location-accuracy-reduced")
+        if self.significantChangesOnly {
+            self.locationManager?.startMonitoringSignificantLocationChanges()
+        } else {
+            self.locationManager?.startUpdatingLocation()
+            self.sendNotification(title: "Location Alert", body: "Location accuracy reduced to save power", identifier: "location-accuracy-reduced")
+        }
         
     }
     
@@ -215,14 +224,21 @@ public class PJAMMGeolocationPlugin: CAPPlugin, CLLocationManagerDelegate, UIApp
     }
     
     @objc public func locationManager(_ manager: CLLocationManager, monitoringDidFailFor region: CLRegion?, withError error: Error) {
-        print("PJAMMGeo - Error monitoring region")
+        // print("PJAMMGeo - Error monitoring region")
     }
     
     @objc public func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
         if self.watchWaitingAuth {
             self.resumeLocationUpdates()
             self.locationManager?.stopUpdatingLocation()
-            self.locationManager?.startUpdatingLocation()
+            self.locationManager?.stopMonitoringSignificantLocationChanges()
+            
+            if self.significantChangesOnly {
+                self.locationManager?.startMonitoringSignificantLocationChanges()
+            } else {
+                self.locationManager?.startUpdatingLocation()
+            }
+            
             self.locationStarted = true
         }
         
@@ -234,17 +250,16 @@ public class PJAMMGeolocationPlugin: CAPPlugin, CLLocationManagerDelegate, UIApp
     }
     
     @objc public func locationManager(_ manager: CLLocationManager, didExitRegion region: CLRegion) {
-        
+
         self.locationManager?.stopMonitoring(for: region)
-        
+
         if self.locationPaused != .none {
             self.resumeLocationUpdates()
         }
-        
+
         if !self.locationStarted && region.identifier == self.geoRelaunchID {
             self.sendNotification(title: "Tracking Stopped", body: "The app was terminated while tracking was active. Reopen the app to resume tracking.", identifier: region.identifier)
         }
-        
     }
     
     @objc private func setDesiredLocationAccuracy(){
@@ -266,7 +281,6 @@ public class PJAMMGeolocationPlugin: CAPPlugin, CLLocationManagerDelegate, UIApp
             self.locationManager?.desiredAccuracy = kCLLocationAccuracyBest
             
         }
-        
     }
     
     @objc private func convertLocationToPosition(location:CLLocation) -> [String:Any] {
@@ -290,6 +304,18 @@ public class PJAMMGeolocationPlugin: CAPPlugin, CLLocationManagerDelegate, UIApp
     
     @objc private func checkUserMovement (location:CLLocation){
         
+        //Significant Changes Only Logic
+        if self.significantChangesOnly {
+            self.movementLocation = location
+            
+            if self.locationPaused != .none {
+                self.resumeLocationUpdates(location: location)
+            }
+            
+            return
+        }
+        
+        //Full Continuous Tracking Logic
         if self.movementLocation == nil {
             self.movementLocation = location
             return
@@ -483,6 +509,12 @@ public class PJAMMGeolocationPlugin: CAPPlugin, CLLocationManagerDelegate, UIApp
 
     @objc func startLocation(_ call: CAPPluginCall) {
         
+        self.significantChangesOnly = call.getBool("significantOnly") ?? false
+        
+        if !CLLocationManager.significantLocationChangeMonitoringAvailable() {
+            print("PJAMMGeo - significant not available");
+        }
+        
         DispatchQueue.main.async { [weak self] in
             
             guard let self = self else { return }
@@ -495,16 +527,28 @@ public class PJAMMGeolocationPlugin: CAPPlugin, CLLocationManagerDelegate, UIApp
             self.locationManager?.requestAlwaysAuthorization()
             self.resumeLocationUpdates()
             self.locationManager?.stopUpdatingLocation()
-            self.locationManager?.startUpdatingLocation()
+            self.locationManager?.stopMonitoringSignificantLocationChanges()
+            
+            if self.significantChangesOnly {
+                print("PJAMMGeo - location start significant")
+                self.locationManager?.startMonitoringSignificantLocationChanges()
+            } else {
+                print("PJAMMGeo - location start full")
+                self.locationManager?.startUpdatingLocation()
+            }
+
             self.locationStarted = true
         }
+
     }
 
     @objc func stopLocation(_ call: CAPPluginCall) {
         self.watchWaitingAuth = false
         self.locationManager?.stopUpdatingLocation()
+        self.locationManager?.stopMonitoringSignificantLocationChanges()
         self.clearGeofenceReion()
         self.locationStarted = false
+        print("PJAMMGeo - location stop")
     }
 
     @objc func enableBackgroundTracking(_ call: CAPPluginCall) {
