@@ -207,8 +207,10 @@ public class PJAMMGeolocationPlugin: CAPPlugin, CLLocationManagerDelegate, UIApp
         self.pauseLocationUpdates(location: manager.location, level: .final)
         
         if self.significantChangesOnly {
+            print("PJAMM GEO - location start significant 2")
             self.locationManager?.startMonitoringSignificantLocationChanges()
         } else {
+            print("PJAMM GEO - location start full 2")
             self.locationManager?.startUpdatingLocation()
             self.sendNotification(title: "Location Alert", body: "Location accuracy reduced to save power", identifier: "location-accuracy-reduced")
         }
@@ -234,8 +236,10 @@ public class PJAMMGeolocationPlugin: CAPPlugin, CLLocationManagerDelegate, UIApp
             self.locationManager?.stopMonitoringSignificantLocationChanges()
             
             if self.significantChangesOnly {
+                print("PJAMM GEO - location start significant 3")
                 self.locationManager?.startMonitoringSignificantLocationChanges()
             } else {
+                print("PJAMM GEO - location start full 3")
                 self.locationManager?.startUpdatingLocation()
             }
             
@@ -411,9 +415,9 @@ public class PJAMMGeolocationPlugin: CAPPlugin, CLLocationManagerDelegate, UIApp
             // self.sendNotification(title: "Location Alert", body: "Location Updates Paused", identifier: "location-paused")
         }
         
-        guard let locationIn = location else { return }
+        // guard let locationIn = location else { return }
         
-        self.updateGeofenceRegion(location: locationIn, id: self.geoResumeID)
+        // self.updateGeofenceRegion(location: locationIn, id: self.geoResumeID)
     }
     
     @objc private func updateGeofenceRegion(location:CLLocation, id:String){
@@ -530,10 +534,10 @@ public class PJAMMGeolocationPlugin: CAPPlugin, CLLocationManagerDelegate, UIApp
             self.locationManager?.stopMonitoringSignificantLocationChanges()
             
             if self.significantChangesOnly {
-                print("PJAMMGeo - location start significant")
+                print("PJAMM GEO - location start significant 1")
                 self.locationManager?.startMonitoringSignificantLocationChanges()
             } else {
-                print("PJAMMGeo - location start full")
+                print("PJAMM GEO - location start full 1")
                 self.locationManager?.startUpdatingLocation()
             }
 
