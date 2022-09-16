@@ -27,14 +27,14 @@ npx cap sync
 ### getLocation(...)
 
 ```typescript
-getLocation(options?: any) => any
+getLocation(options?: any) => Promise<any>
 ```
 
 | Param         | Type             |
 | ------------- | ---------------- |
 | **`options`** | <code>any</code> |
 
-**Returns:** <code>any</code>
+**Returns:** <code>Promise&lt;any&gt;</code>
 
 --------------------
 
